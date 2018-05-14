@@ -201,7 +201,7 @@ impl<A: GameAction> fmt::Display for TreeNode<A> {
 
         // Nested definition for recursive formatting
         fn fmt_subtree<M: GameAction>(f: &mut fmt::Formatter, node: &TreeNode<M>, indent_level :i32) -> fmt::Result {
-            for _ in (0..indent_level) {
+            for _ in 0..indent_level {
                 try!(f.write_str("    "));
             }
             match node.action {
@@ -400,7 +400,6 @@ impl<G: Game<A>, A: GameAction> fmt::Display for MCTS<G, A> {
 mod tests {
     use time;
     //use std::num::traits::*;
-    use test::Bencher;
 
     use mcts::*;
     use minigame::MiniGame;
@@ -498,26 +497,6 @@ mod tests {
         // Check we really spent ~500 ms searching...
         assert!(time_spent > 200);
         assert!(time_spent < 700);
-    }
-
-    #[bench]
-    fn bench_playout(b: &mut Bencher) {
-        let game = MiniGame::new();
-        b.iter(|| playout(&game))
-    }
-
-    #[bench]
-    fn bench_expected(b: &mut Bencher) {
-        let game = MiniGame::new();
-        b.iter(|| expected_reward(&game, 100))
-    }
-
-    #[bench]
-    fn bench_search(b: &mut Bencher) {
-        let game = MiniGame::new();
-        let mut mcts = MCTS::new(&game, 1);
-
-        b.iter(|| mcts.search(10, 1.0))
     }
 
 }

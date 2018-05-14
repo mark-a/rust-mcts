@@ -32,7 +32,6 @@ pub fn choose_random_mut<T>(vec: &mut Vec<T>) -> &mut T {
 
 #[cfg(test)]
 mod tests {
-    use test::Bencher;
 
     use utils::*;
 
@@ -43,9 +42,4 @@ mod tests {
         assert_eq!(*choose_random(&vec), 23);
     }
 
-    #[bench]
-    fn bench_choose_random10(b: &mut Bencher) {
-        let vec = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        b.iter(|| choose_random(&vec))
-    }
 }

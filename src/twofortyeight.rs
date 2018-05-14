@@ -50,42 +50,42 @@ impl TwoFortyEight {
     }
 
     /// Static method
-    fn merge_vec(vec: &Vec<u16>) -> (Vec<u16>, f32, bool) {
+    fn  merge_vec(vec: &mut Vec<u16>,wrk_vec: &mut Vec<u16>) -> ( f32, bool) {
         let mut points = 0.0;
 
         // first, remove zeros
         let orig_len = vec.len();
-        let filtered_vec = vec.iter().map(|t| *t).filter(|&t| t > 0).collect::<Vec<u16>>();
+        vec.retain(|&t| t > 0);
 
         // Remove duplicates
-        let mut merged = Vec::new();
+        wrk_vec.clear();
         let mut next = 0;
-        for t in filtered_vec {
+        for &t in vec.iter() {
             if t == next {
-                merged.push(2*t);
+                wrk_vec.push(2*t);
                 next = 0;
                 points += 2.* (t as f32);
             } else {
                 if next != 0 {
-                    merged.push(next);
+                    wrk_vec.push(next);
                 }
                 next = t;
             }
         }
         if next != 0 {
-            merged.push(next);
+            wrk_vec.push(next);
         }
 
         // Make sure we keep the original length and notice any changes
-        let changed = orig_len != merged.len();
-        for _ in 0..(orig_len-merged.len()) {
-            merged.push(0);
+        let changed = orig_len != wrk_vec.len();
+        for _ in 0..(orig_len-wrk_vec.len()) {
+            wrk_vec.push(0);
         }
-        (merged, points, changed)
+        ( points, changed)
     }
 
     /// Shift and merge in the given direction
-    fn shift_and_merge(board: [u16; WIDTH*HEIGHT], action: &Action) -> ([u16; WIDTH*HEIGHT], Option<f32>) {
+    fn shift_and_merge(mut board: [u16; WIDTH*HEIGHT], action: &Action) -> ([u16; WIDTH*HEIGHT], Option<f32>) {
         let (start, ostride, istride) = match *action {
             Action::Up    => ( 0,  1,  4),
             Action::Down  => (12,  1, -4),
@@ -98,30 +98,32 @@ impl TwoFortyEight {
         let istride = istride as isize;
         assert!(HEIGHT == WIDTH);
 
-        let mut new_board = [0; WIDTH*HEIGHT];
         let mut all_points = 0.0;    //  points we accumulate
         let mut any_changed = false;  // did any of the vectors change?
 
+        let mut vec = Vec::with_capacity(HEIGHT);
+        let mut wrk_vec = Vec::with_capacity(HEIGHT);
+
         for outer in 0..(HEIGHT as isize) {
-            let mut vec = Vec::with_capacity(HEIGHT);
+            vec.clear();
             for inner in 0..(HEIGHT as isize) {
                 let idx = start + outer*ostride + inner*istride;
                 vec.push(board[idx as usize]);
             }
 
-            let (merged_vec, points, changed) = TwoFortyEight::merge_vec(&vec);
+            let ( points, changed) = TwoFortyEight::merge_vec(&mut vec, &mut wrk_vec);
             all_points += points;
             any_changed |= changed;
 
             for inner in 0..(HEIGHT as isize) {
                 let idx = start + outer*ostride + inner*istride;
-                new_board[idx as usize] = merged_vec[inner as usize];
+                board[idx as usize] = wrk_vec[inner as usize];
             }
         }
         if any_changed {
-            (new_board, Some(all_points))
+            (board, Some(all_points))
         } else {
-            (new_board, None)
+            (board, None)
         }
     }
 
@@ -251,7 +253,6 @@ impl fmt::Display for TwoFortyEight {
 
 #[cfg(test)]
 mod tests {
-    use test::Bencher;
 
     use mcts::*;
     use twofortyeight::*;
@@ -343,8 +344,9 @@ mod tests {
             ((2, 2, 4, 8), (4, 4, 8, 0)),
         );*/
 
-        for (input, should) in test_cases {
-            let  output = TwoFortyEight::merge_vec(&input);
+        for (mut input, should) in test_cases {
+            let  mut output = Vec::new();
+            TwoFortyEight::merge_vec(&mut input, &mut output);
             println!("merge_vec({:?}) => {:?}  (should be {:?})", input, output, should);
         }
     }
@@ -379,38 +381,5 @@ mod tests {
         mcts.search(25, 1.);
         let action = mcts.best_action();
         action.expect("should give some action");
-    }
-
-    #[bench]
-    fn bench_playout(b: &mut Bencher) {
-        let game = TwoFortyEight::new();
-        b.iter(|| playout(&game));
-    }
-
-    #[bench]
-    fn bench_allowed_actions(b: &mut Bencher) {
-        let game = TwoFortyEight::new();
-        b.iter(|| game.allowed_actions());
-    }
-
-    #[bench]
-    fn random_spawn_until_full(b: &mut Bencher) {
-        b.iter(|| {
-            let mut game = TwoFortyEight::new();
-            while !game.board_full() {
-                game.random_spawn()
-            }
-        })
-    }
-
-    #[bench]
-    fn board_full(b: &mut Bencher) {
-        let mut game = TwoFortyEight::new();
-
-        for _ in 0..(WIDTH*HEIGHT/2) {
-            game.random_spawn()
-        }
-
-        b.iter(|| game.board_full())
     }
 }
